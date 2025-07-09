@@ -39,12 +39,12 @@ class AttentionNet(nn.Module):
         super().__init__()
         self.encoder = Encoder()
         self.fc = nn.Linear(512, 101) # 101 classes
-        self.softmax = nn.Softmax()
+        
     def forward(self, x):
         x = self.encoder(x)
         x = x.mean(dim=1) # pooling layer over frames
         x = self.fc(x)
-        x = self.softmax(x)
+        
         return x
 
 

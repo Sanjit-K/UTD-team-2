@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import math
 from torchvision import models
-
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class embedNet(nn.Module):
     def __init__(self):
@@ -26,17 +26,15 @@ class embedNet(nn.Module):
 
         x = x.view(batch_size, num_frames, -1) # reshaped
 
-        pe = self.posEnc(num_frames) 
+        pe = self.posEnc(num_frames, device=x.device)
         x +=  pe # automatically broadcasts
         return x
     
-    def posEnc(self, seq_len, dim=512): # seq_len = num_frames
-        pe = torch.zeros(seq_len, dim)
+    def posEnc(self, seq_len, dim=512, device='cpu'):
+        pe = torch.zeros(seq_len, dim, device=device)
+        position = torch.arange(seq_len, dtype=torch.float, device=device).unsqueeze(1)  # (seq_len, 1)
+        div_term = torch.exp(torch.arange(0, dim, 2, dtype=torch.float, device=device) * (-math.log(10000.0) / dim))  # (dim/2,)
 
-        position = torch.arange(0, dim, dtype=torch.float).unsqueeze(1)
-
-        div_term = torch.exp(torch.arange(0, dim, 2).float() * (-math.log(10000.0) / dim))
-        
-        pe[0::2] = torch.sin(position[0::2] * div_term)
-        pe[1::2] = torch.cos(position[1::2] * div_term)
+        pe[:, 0::2] = torch.sin(position * div_term)  # even indices
+        pe[:, 1::2] = torch.cos(position * div_term)  # odd indices
         return pe
