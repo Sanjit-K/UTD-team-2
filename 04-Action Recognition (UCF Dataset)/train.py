@@ -19,9 +19,9 @@ frame_transform = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
 
-class_index_file = r"C:\Users\dylan\OneDrive\Code\CVMC Lab Work\UTD-team-2\ucfTrainTestlist\classInd.txt"
-train_split = r"C:\Users\dylan\OneDrive\Code\CVMC Lab Work\UTD-team-2\ucfTrainTestlist\trainlist01.txt"
-test_split = r"C:\Users\dylan\OneDrive\Code\CVMC Lab Work\UTD-team-2\ucfTrainTestlist\testlist01.txt"
+class_index_file = r'/Users/dylanjoseph/Library/CloudStorage/OneDrive-Personal/Code/CVMC Lab Work/UTD-team-2/ucfTrainTestlist/classInd.txt'
+train_split = r'/Users/dylanjoseph/Library/CloudStorage/OneDrive-Personal/Code/CVMC Lab Work/UTD-team-2/ucfTrainTestlist/trainlist01.txt'
+test_split = r'/Users/dylanjoseph/Library/CloudStorage/OneDrive-Personal/Code/CVMC Lab Work/UTD-team-2/ucfTrainTestlist/testlist01.txt'
 
 train_dataset = UCFdataset(class_index_file, train_split, transform=frame_transform)
 test_dataset = UCFdataset(class_index_file, test_split, transform=frame_transform)
@@ -77,10 +77,10 @@ if __name__ == "__main__":
     model = AttentionNet()
     model = model.to(device)
 
-    # Load best_model.pth as starting parameters if it exists
-    if os.path.exists('best_model.pth'):
-        model.load_state_dict(torch.load('best_model.pth', map_location=device))
-        print("Loaded best_model.pth as starting parameters.")
+    # # Load best_model.pth as starting parameters if it exists
+    # if os.path.exists('best_model.pth'):
+    #     model.load_state_dict(torch.load('best_model.pth', map_location=device))
+    #     print("Loaded best_model.pth as starting parameters.")
 
     criterion = nn.CrossEntropyLoss()
 

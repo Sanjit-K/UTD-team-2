@@ -6,12 +6,13 @@ import torchvision.datasets
 import torchvision.transforms as transforms
 import torch
 import torch.nn as nn
-from embedder import embedNet
+from embedder import embedNet, positionalEncoding
 
 class Encoder(nn.Module):
     def __init__(self):
         super().__init__()
         self.embed = embedNet()
+        self.pos_encoding = positionalEncoding()
         self.mha1 = nn.MultiheadAttention(embed_dim=512, num_heads=8, batch_first=True)
         self.norm1 = nn.LayerNorm(512)
         self.fc1 = nn.Linear(512, 512)
