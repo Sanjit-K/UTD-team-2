@@ -24,7 +24,7 @@ class UCFdataset(Dataset):
             index, class_name = i.split()
             classToIndex[class_name] = int(index) - 1
         with open(splits, 'r') as f:
-            for line in f:
+            for line in f: 
                 parts = line.strip().split()
                 video_path = parts[0]
                 if len(parts) == 2:
