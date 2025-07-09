@@ -1,2 +1,4 @@
 *.csv
 *.rar
+*.DS_Store
+*.zip
