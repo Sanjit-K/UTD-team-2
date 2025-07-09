@@ -12,24 +12,42 @@ class Encoder(nn.Module):
     def __init__(self):
         super().__init__()
         self.embed = embedNet()
-        self.mha = nn.MultiheadAttention(embed_dim=512, num_heads=8, batch_first=True)
+        self.mha1 = nn.MultiheadAttention(embed_dim=512, num_heads=8, batch_first=True)
         self.norm1 = nn.LayerNorm(512)
-        self.fc = nn.Linear(512, 512)
+        self.fc1 = nn.Linear(512, 512)
 
+        self.mha2 = nn.MultiheadAttention(embed_dim=512, num_heads=8, batch_first=True)
         self.norm2 = nn.LayerNorm(512)
+        self.fc2 = nn.Linear(512, 512)
+
+        self.mha3 = nn.MultiheadAttention(embed_dim=512, num_heads=8, batch_first=True)
+        self.norm3 = nn.LayerNorm(512)
+        self.fc3 = nn.Linear(512, 512)
         
     
     def forward(self, x):
         x = self.embed(x)
         identity = x
-        attn_output, _ = self.mha(x, x, x)
+        attn_output, _ = self.mha1(x, x, x)
         x = attn_output + identity
         x = self.norm1(x)
+        x = self.fc1(x)
 
         identity = x
-        x = self.fc(x)
+        attn_output, _ = self.mha2(x, x, x)
+        x = attn_output + identity
+        x = self.norm2(x)
+        x = self.fc2(x)
+
+        identity = x
+        attn_output, _ = self.mha3(x, x, x)
+        x = attn_output + identity
+        x = self.norm3(x)
+        x = self.fc3(x)
+
         x = x + identity
         x = self.norm2(x)
+
 
         return x
 
