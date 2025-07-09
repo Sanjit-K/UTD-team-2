@@ -17,12 +17,10 @@ class UCFdataset(Dataset):
             index, class_name = i.split()
             classToIndex[class_name] = int(index) - 1
         for i in open(splits, 'r'):
-            video_path, label = i.split()
-            if label is None:
-                class_name = video_path.split('/')[0]
-                label = classToIndex[class_name]
-            else:
-                label = int(label) - 1
+            parts = i.split()
+            video_path, label = parts
+            label = int(label) - 1
+            
             self.samples.append((video_path, label))
     
     def __len__(self):
@@ -41,12 +39,14 @@ class UCFdataset(Dataset):
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             frames.append(frame)
         video.release()
+        if len(frames) == 0:
+            print("empty vdieo")
         if len(frames) < 16:
             frames += [frames[-1]] * (16 - len(frames))
-            video_indeces = np.linspace(0, len(frames)-1, 16).astype(int)
-            frameFixed = [frames[i] for i in video_indeces]
-            frameFixed = [self.transform(frame) for frame in frameFixed]
-            tensor = torch.stack(frameFixed, dim=1) # RGB channel, Time, height, width
-            return tensor, label
+        video_indices = np.linspace(0, len(frames)-1, 16).astype(int)
+        frameFixed = [frames[i] for i in video_indices]
+        frameFixed = [self.transform(frame) for frame in frameFixed]
+        tensor = torch.stack(frameFixed, dim=1) # RGB channel, Time, height, width
+        return tensor, label
 
 
