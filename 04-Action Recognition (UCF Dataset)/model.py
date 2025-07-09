@@ -23,7 +23,10 @@ class Encoder(nn.Module):
         self.mha3 = nn.MultiheadAttention(embed_dim=512, num_heads=8, batch_first=True)
         self.norm3 = nn.LayerNorm(512)
         self.fc3 = nn.Linear(512, 512)
-        
+
+        self.fc4 = nn.Linear(512, 512)
+        self.norm4 = nn.LayerNorm(512)
+
     
     def forward(self, x):
         x = self.embed(x)
@@ -45,9 +48,10 @@ class Encoder(nn.Module):
         x = self.norm3(x)
         x = self.fc3(x)
 
+        identity = x
+        x = self.fc4(x)
         x = x + identity
-        x = self.norm2(x)
-
+        x = self.norm4(x)
 
         return x
 
