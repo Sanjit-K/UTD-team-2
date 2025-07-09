@@ -6,9 +6,11 @@ from torchvision import models
 class embedNet(nn.Module):
     def __init__(self):
         super().__init__()
-        resnet = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
-        out_dim = 512
-        self.backbone = nn.Sequential(*list(resnet.children())[:-2]) #remove last 2 layers
+        resnet = models.resnet50(weights=models.ResNet50_Weights.DEFAULT)
+        out_dim = resnet.fc.in_features
+        self.backbone = nn.Sequential(*list(resnet.children())[:-1]) #remove last 1 layers
+        for param in resnet.parameters(): # freeze all parameters in the res_net (does not need training)
+            param.requires_grad = False
         self.out_dim = out_dim
         self.proj = nn.Linear(out_dim, 512)
         
@@ -20,9 +22,7 @@ class embedNet(nn.Module):
         _, out_dim, h_p, w_p = features.shape
         features = features.view(b, t, out_dim, h_p, w_p)
         features = features.permute(0, 1, 3, 4, 2).reshape(b, t * h_p * w_p, out_dim)  # (batch, tokens, out_dim)
-
-
-        
+        features = self.proj(features)  # (batch, tokens, 512)
         return features
 
 class posEnc(nn.Module):
