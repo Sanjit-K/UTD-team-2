@@ -26,15 +26,14 @@ class embedNet(nn.Module):
 
         x = x.view(batch_size, num_frames, -1) # reshaped
 
-        pe = self.posEnc(num_frames, device=x.device)
-        x +=  pe # automatically broadcasts
         return x
     
-    def posEnc(self, seq_len, dim=512, device='cpu'):
-        pe = torch.zeros(seq_len, dim, device=device)
-        position = torch.arange(seq_len, dtype=torch.float, device=device).unsqueeze(1)  # (seq_len, 1)
-        div_term = torch.exp(torch.arange(0, dim, 2, dtype=torch.float, device=device) * (-math.log(10000.0) / dim))  # (dim/2,)
 
-        pe[:, 0::2] = torch.sin(position * div_term)  # even indices
-        pe[:, 1::2] = torch.cos(position * div_term)  # odd indices
-        return pe
+class positionalEncoding(nn.Module):
+    def __init__(self, max_len=1000, d_model=512):
+        super().__init__()
+        self.pos_embedding = nn.Parameter(torch.randn(1, max_len, d_model))
+
+    def forward(self, x):
+        seq_len = x.size(1)
+        return self.pos_embedding[:, :seq_len, :]

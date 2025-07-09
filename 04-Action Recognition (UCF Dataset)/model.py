@@ -30,25 +30,28 @@ class Encoder(nn.Module):
     
     def forward(self, x):
         x = self.embed(x)
-        identity = x
+        x += self.pos_encoding(x)
+
+
+        identity = x # block 1 (mha1)
         attn_output, _ = self.mha1(x, x, x)
         x = attn_output + identity
         x = self.norm1(x)
         x = self.fc1(x)
 
-        identity = x
+        identity = x # block 2 (mha2)
         attn_output, _ = self.mha2(x, x, x)
         x = attn_output + identity
         x = self.norm2(x)
         x = self.fc2(x)
 
-        identity = x
+        identity = x # block 3 (mha3)
         attn_output, _ = self.mha3(x, x, x)
         x = attn_output + identity
         x = self.norm3(x)
         x = self.fc3(x)
 
-        identity = x
+        identity = x # block 4 (final fully connected layer)
         x = self.fc4(x)
         x = x + identity
         x = self.norm4(x)
