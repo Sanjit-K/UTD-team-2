@@ -2,3 +2,5 @@
 *.rar
 *.DS_Store
 *.zip
+UCF101
+ucfTrainTestlist
