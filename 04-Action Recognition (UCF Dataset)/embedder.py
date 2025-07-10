@@ -12,9 +12,9 @@ class embedNet(nn.Module):
         res_net.fc = nn.Identity() # remove the final fully connected layer
         res_net.fc = nn.Linear(output_dim, 512) # replace with a new fully connected layer
         
-        for param in res_net.parameters(): # freeze all parameters in the res_net (does not need training)
+        for param in res_net.parameters():
             param.requires_grad = False
-        for param in res_net.fc.parameters(): # unfreeze the parameters in the new fully connected layer (this layer needs training)
+        for param in res_net.fc.parameters():
             param.requires_grad = True
         self.model = res_net
     def forward(self,x):
@@ -25,7 +25,7 @@ class embedNet(nn.Module):
         x = self.model(x)
 
         x = x.view(batch_size, num_frames, -1) # reshaped
-
+     
         return x
     
 

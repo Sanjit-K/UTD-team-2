@@ -44,7 +44,7 @@ class UCFdataset(Dataset):
 
         video_filename = os.path.basename(video_path)
         class_name = video_path.split('/')[0]
-        main_dir = r'/Users/dylanjoseph/Library/CloudStorage/OneDrive-Personal/Code/CVMC Lab Work/UTD-team-2/UCF101'
+        main_dir = r"C:\Users\dylan\UTD-team-2\UCF101"
         video_path = os.path.join(main_dir, 'UCF-101', class_name, video_filename)     # use original  relative path, not just basename
 
         video = cv2.VideoCapture(video_path)
