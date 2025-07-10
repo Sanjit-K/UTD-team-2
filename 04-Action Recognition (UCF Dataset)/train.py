@@ -15,7 +15,9 @@ frame_transform = transforms.Compose([
     transforms.ToPILImage(),
     transforms.Resize(256),
     transforms.CenterCrop(224),
+    transforms.RandomHorizontalFlip(),
     transforms.ToTensor(),
+    transforms.ColorJitter(brightness= (0, 0.2), contrast= (0, 0.3), saturation= (0,0.4), hue=(0,0.1)),
     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
 ])
 
@@ -35,13 +37,12 @@ def train(model, loader, criterion, optimizer):
     correct = 0
     total = 0
     for batch_idx, (videos, labels) in enumerate(loader):
-        print(f"batch {batch_idx+1}/{len(loader)}")
         videos, labels = videos.to(device), labels.to(device)
         optimizer.zero_grad()
         
         outputs = model(videos)
         loss = criterion(outputs, labels)
-        print(loss.item())
+        
         loss.backward()
         optimizer.step()
         total_loss += loss.item() * labels.size(0)
@@ -49,6 +50,8 @@ def train(model, loader, criterion, optimizer):
         total += labels.size(0)
         correct += predicted.eq(labels).sum().item()
 
+        if batch_idx%100==99 or batch_idx==0:
+            print(f'[{batch_idx+1}, {loss}]')
     
     avg_loss = total_loss / total
     
@@ -82,14 +85,15 @@ if __name__ == "__main__":
     model = AttentionNet()
     model = model.to(device)
 
-    # # Load best_model.pth as starting parameters if it exists
-    # if os.path.exists('best_model.pth'):
-    #     model.load_state_dict(torch.load('best_model.pth', map_location=device))
-    #     print("Loaded best_model.pth as starting parameters.")
+    # Load best_model.pth as starting parameters if it exists
+    if os.path.exists('best_model.pth'):
+        model.load_state_dict(torch.load('best_model.pth', map_location=device))
+        print("Loaded best_model.pth as starting parameters.")
 
     criterion = nn.CrossEntropyLoss()
 
-    optimizer = optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-4)
+    optimizer = optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-3)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=2)
     train_losses = []
     test_losses = []
     best_acc = 0
@@ -105,6 +109,17 @@ if __name__ == "__main__":
         test_losses.append(test_loss)
         train_losses.append(train_loss)
 
-        if test_acc > best_acc:
-            best_acc = test_acc
-            torch.save(model.state_dict(), 'best_model.pth')
+        scheduler.step(test_loss)
+        if test_acc>=train_acc: # ensures no overfitted model parameters are being run
+            if test_acc > best_acc:
+                best_acc = test_acc
+                torch.save(model.state_dict(), 'best_model.pth')
+                print('weights saved')
+        continue_running = input('continue running? [y]/[n] ')
+
+        if continue_running.lower() == 'n':
+
+            break
+    
+    print(f'train losses: {train_losses}')
+    print(f'test losses: {test_losses}')
