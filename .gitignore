@@ -10,3 +10,5 @@ UCF101
 ucfTrainTestlist
 '.DS_Store' 
 04-Action Recognition (UCF Dataset)/*.pth
+04-Action Recognition (UCF Dataset)/__pycache__
+04-Action Recognition (UCF Dataset)/__pycache__
