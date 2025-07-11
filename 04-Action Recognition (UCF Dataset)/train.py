@@ -1,13 +1,13 @@
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
 from torchvision import transforms
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from model import AttentionNet
 from data import UCFdataset
-import os 
+import os
 
-epochs = 10
+epochs = 5
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
@@ -15,10 +15,15 @@ frame_transform = transforms.Compose([
     transforms.ToPILImage(),
     transforms.Resize(256),
     transforms.CenterCrop(224),
+    
     transforms.RandomHorizontalFlip(),
+    transforms.ColorJitter(brightness= 0.4, contrast= 0.4, saturation= 0.5, hue= 0.1),
+
     transforms.ToTensor(),
-    transforms.ColorJitter(brightness= (0, 0.2), contrast= (0, 0.3), saturation= (0,0.4), hue=(0,0.1)),
-    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    transforms.GaussianBlur(kernel_size=3),
+    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+    
+    transforms.RandomErasing(p=0.2)
 ])
 
 class_index_file = r"C:\Users\dylan\UTD-team-2\ucfTrainTestlist\classInd.txt"
@@ -27,8 +32,8 @@ test_split = r"C:\Users\dylan\UTD-team-2\ucfTrainTestlist\testlist01.txt"
 
 train_dataset = UCFdataset(class_index_file, train_split, transform=frame_transform)
 test_dataset = UCFdataset(class_index_file, test_split, transform=frame_transform)
-train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True, num_workers=4)
-test_loader = DataLoader(test_dataset, batch_size=16, shuffle=False, num_workers=4)
+train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True, num_workers=2)
+test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False, num_workers=2)
 
 def train(model, loader, criterion, optimizer):
     print('training')
@@ -91,9 +96,9 @@ if __name__ == "__main__":
         print("Loaded best_model.pth as starting parameters.")
 
     criterion = nn.CrossEntropyLoss()
-
-    optimizer = optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-3)
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=2)
+    lr = 5e-5
+    optimizer = optim.Adam(model.parameters(), lr=lr, betas=(0.9,0.98), weight_decay=1e-3) #1e-4/2 = 5e-5
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
     train_losses = []
     test_losses = []
     best_acc = 0
@@ -101,25 +106,25 @@ if __name__ == "__main__":
     print('starting')
 
     for epoch in range(epochs):
-        print(f'Epoch {epoch+1}')
+        print(f'Epoch {epoch+1} with learning rate {lr}')
         train_loss, train_acc = train(model, train_loader, criterion, optimizer)
         test_loss, test_acc = evaluate(model, test_loader, criterion)
 
-        print(f'on epoch {epoch}: train_loss={train_loss:.4f}, train_acc={train_acc:.4f}%, test_loss={test_loss:.4f}, test_acc={test_acc:.4f}%')
+        print(f'on epoch {epoch+1}: train_loss={train_loss:.4f}, train_acc={train_acc:.4f}%, test_loss={test_loss:.4f}, test_acc={test_acc:.4f}%')
         test_losses.append(test_loss)
         train_losses.append(train_loss)
 
-        scheduler.step(test_loss)
-        if test_acc>=train_acc: # ensures no overfitted model parameters are being run
-            if test_acc > best_acc:
-                best_acc = test_acc
-                torch.save(model.state_dict(), 'best_model.pth')
-                print('weights saved')
-        continue_running = input('continue running? [y]/[n] ')
+        scheduler.step()
+        
+        if test_acc > best_acc:
+            best_acc = test_acc
+            torch.save(model.state_dict(), 'best_model.pth')
+            print('best weights saved!')
+        # continue_running = input('continue running? [y]/[n] ')
 
-        if continue_running.lower() == 'n':
+        # if continue_running.lower() == 'n':
 
-            break
+        #     break
     
     print(f'train losses: {train_losses}')
     print(f'test losses: {test_losses}')
