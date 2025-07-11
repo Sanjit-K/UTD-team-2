@@ -1,1 +1,15 @@
+*.csv
+*.rar
+*.DS_Store
+*.zip
+UCF101
+ucfTrainTestlist
+/Users/dylanjoseph/Library/CloudStorage/OneDrive-Personal/Code/CVMC Lab Work/UTD-team-2/03-CIFAR 10 (Convolutional Neural Network)/cifar-10-python.tar.gz
+UTDteam
+UCF101
+ucfTrainTestlist
+'.DS_Store' 
+04-Action Recognition (UCF Dataset)/*.pth
+04-Action Recognition (UCF Dataset)/__pycache__
+04-Action Recognition (UCF Dataset)/__pycache__
 cifar-10-python.tar.gz
