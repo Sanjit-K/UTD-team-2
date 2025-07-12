@@ -45,6 +45,7 @@ def train(model, loader, criterion, optimizer, device):
     correct = 0
     total = 0
     for batch_idx, (videos, labels) in enumerate(loader):
+        print(f'Training batch {batch_idx+1}/{len(loader)}')
         videos, labels = videos.to(device), labels.to(device)
         optimizer.zero_grad()
         
