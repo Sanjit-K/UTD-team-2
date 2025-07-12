@@ -6,42 +6,46 @@ import torch.optim as optim
 from model import AttentionNet
 from data import UCFdataset
 import os
+import argparse
 
-epochs = 5
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+def get_args():
+    parser = argparse.ArgumentParser(description="Train Action Recognition Model")
+    parser.add_argument('--class_index_file', type=str, default="ucfTrainTestlist/classInd.txt", help='Path to classInd.txt')
+    parser.add_argument('--train_split', type=str, default="ucfTrainTestlist/trainlist01.txt", help='Path to trainlist01.txt')
+    parser.add_argument('--test_split', type=str, default="ucfTrainTestlist/testlist01.txt", help='Path to testlist01.txt')
+    parser.add_argument('--epochs', type=int, default=5, help='Number of training epochs')
+    parser.add_argument('--batch_size', type=int, default=32, help='Batch size for training and testing')
+    parser.add_argument('--num_workers', type=int, default=2, help='Number of DataLoader workers')
+    parser.add_argument('--mha_layers', type=int, default=2, help='Number of MHA layers in AttentionNet')
+    parser.add_argument('--num_heads', type=int, default=4, help='Number of heads in MHA')
+    parser.add_argument('--model_save_path', type=str, default='best_model.pth', help='Path to save the best model')
+    parser.add_argument('--model_load_path', type=str, default='best_model.pth', help='Path to load the model from')
+    parser.add_argument('--resnet_model', type=str, default='resnet18', help='ResNet backbone to use (e.g., resnet18, resnet34)')
+    parser.add_argument('--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu', help='Device to use (cuda or cpu)')
+    return parser.parse_args()
 
 
-frame_transform = transforms.Compose([
-    transforms.ToPILImage(),
-    transforms.Resize(256),
-    transforms.CenterCrop(224),
-    
-    transforms.RandomHorizontalFlip(),
-    transforms.ColorJitter(brightness= 0.4, contrast= 0.4, saturation= 0.5, hue= 0.1),
+def get_frame_transform():
+    return transforms.Compose([
+        transforms.ToPILImage(),
+        transforms.Resize(256),
+        transforms.CenterCrop(224),
+        transforms.RandomHorizontalFlip(),
+        transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.5, hue=0.1),
+        transforms.ToTensor(),
+        transforms.GaussianBlur(kernel_size=3),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+        transforms.RandomErasing(p=0.2)
+    ])
 
-    transforms.ToTensor(),
-    transforms.GaussianBlur(kernel_size=3),
-    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-    
-    transforms.RandomErasing(p=0.2)
-])
-
-class_index_file = r"C:\Users\dylan\UTD-team-2\ucfTrainTestlist\classInd.txt"
-train_split = r"C:\Users\dylan\UTD-team-2\ucfTrainTestlist\trainlist01.txt"
-test_split = r"C:\Users\dylan\UTD-team-2\ucfTrainTestlist\testlist01.txt"
-
-train_dataset = UCFdataset(class_index_file, train_split, transform=frame_transform)
-test_dataset = UCFdataset(class_index_file, test_split, transform=frame_transform)
-train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True, num_workers=2)
-test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False, num_workers=2)
-
-def train(model, loader, criterion, optimizer):
+def train(model, loader, criterion, optimizer, device):
     print('training')
     model.train()
     total_loss = 0
     correct = 0
     total = 0
     for batch_idx, (videos, labels) in enumerate(loader):
+        print(f'Training batch {batch_idx+1}/{len(loader)}')
         videos, labels = videos.to(device), labels.to(device)
         optimizer.zero_grad()
         
@@ -64,7 +68,7 @@ def train(model, loader, criterion, optimizer):
     
     return avg_loss, accuracy
 
-def evaluate(model, loader, criterion):
+def evaluate(model, loader, criterion, device):
     print("Evaluation started")
     model.eval()
     total_loss = 0
@@ -86,18 +90,26 @@ def evaluate(model, loader, criterion):
     return avg_loss, accuracy
 
 if __name__ == "__main__":
+    args = get_args()
+    device = torch.device(args.device)
+    frame_transform = get_frame_transform()
 
-    model = AttentionNet()
+    train_dataset = UCFdataset(args.class_index_file, args.train_split, transform=frame_transform)
+    test_dataset = UCFdataset(args.class_index_file, args.test_split, transform=frame_transform)
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
+    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
+
+    model = AttentionNet(mha_layers=args.mha_layers, num_heads=args.num_heads, resnet_model=args.resnet_model)
     model = model.to(device)
 
-    # Load best_model.pth as starting parameters if it exists
-    if os.path.exists('best_model.pth'):
-        model.load_state_dict(torch.load('best_model.pth', map_location=device))
-        print("Loaded best_model.pth as starting parameters.")
+    # Load model if exists
+    if os.path.exists(args.model_load_path):
+        model.load_state_dict(torch.load(args.model_load_path, map_location=device))
+        print(f"Loaded {args.model_load_path} as starting parameters.")
 
     criterion = nn.CrossEntropyLoss()
     lr = 5e-5
-    optimizer = optim.Adam(model.parameters(), lr=lr, betas=(0.9,0.98), weight_decay=1e-3) #1e-4/2 = 5e-5
+    optimizer = optim.Adam(model.parameters(), lr=lr, betas=(0.9,0.98), weight_decay=1e-3)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
     train_losses = []
     test_losses = []
@@ -105,10 +117,10 @@ if __name__ == "__main__":
 
     print('starting')
 
-    for epoch in range(epochs):
+    for epoch in range(args.epochs):
         print(f'Epoch {epoch+1} with learning rate {lr}')
-        train_loss, train_acc = train(model, train_loader, criterion, optimizer)
-        test_loss, test_acc = evaluate(model, test_loader, criterion)
+        train_loss, train_acc = train(model, train_loader, criterion, optimizer, device)
+        test_loss, test_acc = evaluate(model, test_loader, criterion, device)
 
         print(f'on epoch {epoch+1}: train_loss={train_loss:.4f}, train_acc={train_acc:.4f}%, test_loss={test_loss:.4f}, test_acc={test_acc:.4f}%')
         test_losses.append(test_loss)
@@ -118,13 +130,8 @@ if __name__ == "__main__":
         
         if test_acc > best_acc:
             best_acc = test_acc
-            torch.save(model.state_dict(), 'best_model.pth')
+            torch.save(model.state_dict(), args.model_save_path)
             print('best weights saved!')
-        # continue_running = input('continue running? [y]/[n] ')
-
-        # if continue_running.lower() == 'n':
-
-        #     break
     
     print(f'train losses: {train_losses}')
     print(f'test losses: {test_losses}')

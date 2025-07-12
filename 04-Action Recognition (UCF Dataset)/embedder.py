@@ -5,9 +5,22 @@ from torchvision import models
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class embedNet(nn.Module):
-    def __init__(self):
+    def __init__(self, resnet_model='resnet50'):
         super().__init__()
-        res_net = models.resnet50(weights='IMAGENET1K_V2')
+        # Select the correct torchvision resnet model
+        resnet_dict = {
+            'resnet18': models.resnet18,
+            'resnet34': models.resnet34,
+            'resnet50': models.resnet50,
+            'resnet101': models.resnet101,
+            'resnet152': models.resnet152
+        }
+        if resnet_model not in resnet_dict:
+            raise ValueError(f"Unknown resnet_model: {resnet_model}")
+        if resnet_model == 'resnet50':
+            res_net = resnet_dict[resnet_model](weights='IMAGENET1K_V2')
+        else:
+            res_net = resnet_dict[resnet_model](weights='IMAGENET1K_V1')
         output_dim = res_net.fc.in_features
         res_net.fc = nn.Identity() # remove the final fully connected layer
         res_net.fc = nn.Linear(output_dim, 512) # replace with a new fully connected layer

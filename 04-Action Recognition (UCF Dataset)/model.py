@@ -4,7 +4,7 @@ from embedder import embedNet, positionalEncoding
 # CHANGED: # "For the base model, we use a rate of Pdrop = 0.1." (Vaswani et. al. 2017)
 dropout=0.25
 class TransformerBlock(nn.Module):
-    def __init__(self, d_model=512, n_heads=8, d_ff=2048): 
+    def __init__(self, d_model=512, n_heads=8, d_ff=2048):
         # d_ff = dimension of feedfoward network inner layer
         # "The dimensionality of input and output is dmodel = 512, and the inner-layer has dimensionality df_f = 2048." (Vaswani et. al. 2017)
         super().__init__()
@@ -36,13 +36,16 @@ class TransformerBlock(nn.Module):
 
         return x
     
+
 class Encoder(nn.Module):
-    def __init__(self, num_layers=2):
+    def __init__(self, num_layers=2, num_heads=8):
         super().__init__()
         self.embed = embedNet()
         self.pos_encoding = positionalEncoding()
         self.dropout_embedding = nn.Dropout(dropout)
-        self.layers = nn.ModuleList([TransformerBlock() for _ in range(num_layers)])
+        self.layers = nn.ModuleList([
+            TransformerBlock(n_heads=num_heads) for _ in range(num_layers)
+        ])
 
     def forward(self, x):
         x = self.embed(x)
@@ -53,18 +56,16 @@ class Encoder(nn.Module):
         return x
     
 class AttentionNet(nn.Module):
-    def __init__(self):
+    def __init__(self, mha_layers=2, num_heads=4, resnet_model='resnet18'):
         super().__init__()
-        self.encoder = Encoder()
+        self.encoder = Encoder(num_layers=mha_layers, num_heads=num_heads)
         self.dropout = nn.Dropout(dropout)
         self.fc = nn.Linear(512, 101) # 101 classes
-        
     def forward(self, x):
         x = self.encoder(x)
         x = x.mean(dim=1) # pooling layer over frames
         x = self.dropout(x)
         x = self.fc(x)
-
         return x
 
 
