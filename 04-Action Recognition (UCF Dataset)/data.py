@@ -8,6 +8,7 @@ import numpy as np
 import cv2
 
 
+
 class UCFdataset(Dataset):
     def __init__(self, class_index, splits, transform, main_dir=None, num_frames=16):
         # Load class name to index mapping
@@ -16,7 +17,7 @@ class UCFdataset(Dataset):
             for line in f:
                 index, class_name = line.strip().split()
                 self.classToIndex[class_name] = int(index) - 1
-        
+
         self.transform = transform
         self.samples = []
         with open(splits, 'r') as f:
@@ -32,7 +33,7 @@ class UCFdataset(Dataset):
                 self.samples.append((video_path, label))
         self.main_dir = main_dir or os.path.join(os.getcwd(), "UCF101")
         self.num_frames = num_frames
-    
+
     def __len__(self):
         return len(self.samples)
 
@@ -63,4 +64,3 @@ class UCFdataset(Dataset):
         frameFixed = [self.transform(frame) for frame in frameFixed]
         tensor = torch.stack(frameFixed, dim=0) # Time, RGB channel, height, width
         return tensor, label
-
