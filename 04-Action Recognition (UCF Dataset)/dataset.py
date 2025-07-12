@@ -9,7 +9,7 @@ import cv2
 
 
 class UCFdataset(Dataset):
-    def __init__(self, class_index, splits, transform):
+    def __init__(self, class_index, splits, transform, train=False):
         self.transform = transform
         self.samples = []
         classToIndex = {}
@@ -18,6 +18,8 @@ class UCFdataset(Dataset):
             classToIndex[class_name] = int(index) - 1
         for i in open(splits, 'r'):
             parts = i.split()
+            if(train is False):
+                break
             video_path, label = parts
             label = int(label) - 1
             
@@ -48,5 +50,4 @@ class UCFdataset(Dataset):
         frameFixed = [self.transform(frame) for frame in frameFixed]
         tensor = torch.stack(frameFixed, dim=1) # RGB channel, Time, height, width
         return tensor, label
-
 
