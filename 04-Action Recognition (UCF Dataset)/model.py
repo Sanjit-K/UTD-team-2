@@ -1,72 +1,57 @@
+import torch
 import torch.nn as nn
-from embedder import embedNet, positionalEncoding
+from embed import Embed, pEncoding
 
-# CHANGED: # "For the base model, we use a rate of Pdrop = 0.1." (Vaswani et. al. 2017)
-dropout=0.25
-class TransformerBlock(nn.Module):
-    def __init__(self, d_model=512, n_heads=8, d_ff=2048):
-        # d_ff = dimension of feedfoward network inner layer
-        # "The dimensionality of input and output is dmodel = 512, and the inner-layer has dimensionality df_f = 2048." (Vaswani et. al. 2017)
-        super().__init__()
-        self.attn = nn.MultiheadAttention(d_model, n_heads, batch_first=True)
-        self.norm1 = nn.LayerNorm(d_model)
+class TransformerModule(nn.Module):
+    def __init__(self, embed_dim=512, num_heads=8, dropout=0.1):
+        super(TransformerModule, self).__init__()
+        self.attn = nn.MultiheadAttention(embed_dim, num_heads, batch_first=True, dropout=dropout)
         self.dropout1 = nn.Dropout(dropout)
+        self.norm1 = nn.LayerNorm(embed_dim)
 
-        self.ffn = nn.Sequential(
-            nn.Linear(d_model, d_ff),
+        self.fc = nn.Sequential(
+            nn.Linear(embed_dim, embed_dim),
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(d_ff, d_model),
+            nn.Linear(embed_dim, embed_dim)
         )
-
-        self.dropout2 = nn.Dropout(dropout)
-        self.norm2 = nn.LayerNorm(d_model)
+        self.norm2 = nn.LayerNorm(embed_dim)
 
     def forward(self, x):
-        attn_out, _ = self.attn(x, x, x)
-        attn_out = self.dropout1(attn_out) # "We apply dropout [27] to the output of each sub-layer, before it is added to the sub-layer input and normalized." (Vaswani et. al. 2017)
-        x = x + attn_out 
-        x = self.norm1(x)
-        
-
-        ffn_out = self.ffn(x) 
-        ffn_out = self.dropout2(ffn_out) # "We apply dropout [27] to the output of each sub-layer, before it is added to the sub-layer input and normalized." (Vaswani et. al. 2017)
-        x = x + ffn_out
-        x = self.norm2(x)
-
+        # Self-attention sublayer
+        attn_output, _ = self.attn(x, x, x)
+        x = self.norm1(x + self.dropout1(attn_output))
+        # Feed-forward sublayer
+        fc_output = self.fc(x)
+        x = self.norm2(x + fc_output)
         return x
-    
 
-class Encoder(nn.Module):
-    def __init__(self, num_layers=2, num_heads=8):
-        super().__init__()
-        self.embed = embedNet()
-        self.pos_encoding = positionalEncoding()
-        self.dropout_embedding = nn.Dropout(dropout)
-        self.layers = nn.ModuleList([
-            TransformerBlock(n_heads=num_heads) for _ in range(num_layers)
-        ])
+class Encode(nn.Module):
+    def __init__(self, num_layers=4, embed_dim=512):
+        super(Encode, self).__init__()
+        self.embed = Embed()  # extracts per-frame features: (batch, timesteps, 512)
+        self.pos_encoding = pEncoding(max_len=1000, d_model=embed_dim)
+        # Stack transformer encoder blocks
+        self.layers = nn.ModuleList([TransformerModule(embed_dim=embed_dim) for _ in range(num_layers)])
 
     def forward(self, x):
         x = self.embed(x)
+        # Add positional encoding
         x = x + self.pos_encoding(x)
-        x = self.dropout_embedding(x) # "We apply dropout to the sums of the embeddings and the positional encodings" (Vaswani et. al. 2017)
         for layer in self.layers:
             x = layer(x)
         return x
-    
-class AttentionNet(nn.Module):
-    def __init__(self, mha_layers=2, num_heads=4, resnet_model='resnet18'):
-        super().__init__()
-        self.encoder = Encoder(num_layers=mha_layers, num_heads=num_heads)
-        self.dropout = nn.Dropout(dropout)
-        self.fc = nn.Linear(512, 101) # 101 classes
+
+class ANet(nn.Module):
+    def __init__(self, num_classes=101):
+        super(ANet, self).__init__()
+        self.encoder = Encode(num_layers=4)
+        self.fc = nn.Linear(512, num_classes)
+
     def forward(self, x):
-        x = self.encoder(x)
-        x = x.mean(dim=1) # pooling layer over frames
-        x = self.dropout(x)
+        # Process each frame via encoder
+        x = self.encoder(x)  # shape (batch, timesteps, 512)
+        # Temporal average pooling over frames
+        x = x.mean(dim=1)
         x = self.fc(x)
         return x
-
-
-

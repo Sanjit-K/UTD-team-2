@@ -1,0 +1,7 @@
+UCF-101/
+UCF101_Action_detection_splits/
+.DS_Store
+.*
+!.gitignore
+UCF101.rar
+best_model.pth
